@@ -2,10 +2,167 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Bienvenue !</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FLE Interactive</title>
+  <style>
+    :root {
+      --bg: #fff; --fg: #222;
+      --accent: #2980b9; --accent-light: #3498db;
+    }
+    [data-theme="dark"] {
+      --bg: #1a1a1a; --fg: #eee;
+      --accent: #9b59b6; --accent-light: #8e44ad;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: sans-serif;
+      background: var(--bg); color: var(--fg);
+      transition: background .3s, color .3s;
+    }
+    nav {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: .5rem 1rem; background: var(--accent);
+    }
+    nav a { color: #fff; margin: 0 .5rem; text-decoration: none; }
+    .container { max-width: 800px; margin: auto; padding: 1rem; }
+    .hero {
+      text-align: center; padding: 2rem 1rem;
+      background: var(--accent-light); color: #fff;
+    }
+    .section { margin: 2rem 0; }
+    h2 { border-bottom: 2px solid var(--accent); padding-bottom: .3rem; }
+    /* Vocabulary */
+    #vocab-list { list-style: none; padding: 0; }
+    #vocab-list li { padding: .3rem 0; }
+    /* Button styles */
+    button {
+      background: var(--accent); color: #fff; border: none;
+      padding: .5rem 1rem; margin: .5rem 0; cursor: pointer;
+      border-radius: 4px; transition: background .2s;
+    }
+    button:hover { background: var(--accent-light); }
+    /* Quiz */
+    .quiz-question { margin: 1rem 0; }
+    .quiz-feedback { font-weight: bold; }
+    /* Footer */
+    footer {
+      text-align: center; padding: 1rem; font-size: .9rem;
+      border-top: 1px solid #ccc;
+    }
+    .theme-toggle { position: fixed; top: 1rem; right: 1rem; }
+  </style>
 </head>
 <body>
-  <h1>Cours de FLE</h1>
-  <p>Bienvenue sur la page de cours de français.</p>
+  <nav>
+    <div><strong>FLE Interactive</strong></div>
+    <div>
+      <a href="#home">Accueil</a>
+      <a href="#vocab">Vocabulaire</a>
+      <a href="#random">Phrases</a>
+      <a href="#quiz">Quiz</a>
+    </div>
+  </nav>
+  <button class="theme-toggle" aria-label="Toggle theme">🌙</button>
+
+  <section id="home" class="hero">
+    <h1>Bienvenue au Cours de FLE !</h1>
+    <p>Apprenez le français de façon interactive.</p>
+  </section>
+
+  <div class="container">
+    <!-- Vocabulary Filter -->
+    <section id="vocab" class="section">
+      <h2>Vocabulaire</h2>
+      <input type="text" id="vocab-filter" placeholder="Rechercher un mot…">
+      <ul id="vocab-list">
+        <li>Bonjour – Hello</li>
+        <li>Merci – Thank you</li>
+        <li>S’il vous plaît – Please</li>
+        <li>Au revoir – Goodbye</li>
+        <li>Comment ça va ? – How are you?</li>
+        <!-- …ajoutez-en d’autres… -->
+      </ul>
+    </section>
+
+    <!-- Random Phrase Generator -->
+    <section id="random" class="section">
+      <h2>Phrase aléatoire</h2>
+      <p id="phrase-display">Cliquez sur le bouton pour générer une phrase.</p>
+      <button id="new-phrase">Nouvelle phrase</button>
+    </section>
+
+    <!-- Simple Quiz -->
+    <section id="quiz" class="section">
+      <h2>Quiz rapide</h2>
+      <div class="quiz-question">
+        <p>Comment dit-on “Apple” en français ?</p>
+        <button data-answer="Pomme">Pomme</button>
+        <button data-answer="Banane">Banane</button>
+        <button data-answer="Orange">Orange</button>
+      </div>
+      <p id="quiz-feedback" class="quiz-feedback"></p>
+    </section>
+  </div>
+
+  <footer>
+    &copy; 2025 FLE Interactive — Créé par Julien
+  </footer>
+
+  <script>
+    // Theme toggle
+    const toggle = document.querySelector('.theme-toggle');
+    const applyTheme = t => {
+      document.documentElement.setAttribute('data-theme', t);
+      toggle.textContent = t === 'dark' ? '☀️' : '🌙';
+      localStorage.setItem('theme', t);
+    };
+    toggle.addEventListener('click', () => {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+    });
+    // Initialize theme
+    applyTheme(localStorage.getItem('theme') || 'light');
+
+    // Vocab filter
+    const filterInput = document.getElementById('vocab-filter');
+    const vocabItems  = [...document.querySelectorAll('#vocab-list li')];
+    filterInput.addEventListener('input', () => {
+      const q = filterInput.value.toLowerCase();
+      vocabItems.forEach(li => {
+        li.style.display = li.textContent.toLowerCase().includes(q) ? '' : 'none';
+      });
+    });
+
+    // Random phrase generator
+    const phrases = [
+      "Je m'appelle Julien.", "Où sont les toilettes ?", 
+      "J'ai besoin d'aide.", "Quelle heure est-il ?", 
+      "J'aime apprendre le français."
+    ];
+    document.getElementById('new-phrase').onclick = () => {
+      const p = phrases[Math.floor(Math.random() * phrases.length)];
+      document.getElementById('phrase-display').textContent = p;
+    };
+
+    // Quiz logic
+    const quizBtns = document.querySelectorAll('#quiz button[data-answer]');
+    const feedback  = document.getElementById('quiz-feedback');
+    quizBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        feedback.textContent = (btn.dataset.answer === 'Pomme')
+          ? '✅ Correct !'
+          : '❌ Oops, c’est “Pomme”.';
+      });
+    });
+
+    // Smooth scroll for nav links
+    document.querySelectorAll('nav a').forEach(a => {
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        document.querySelector(a.getAttribute('href'))
+                .scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+  </script>
 </body>
 </html>
