@@ -1,0 +1,221 @@
+<div style="text-align: center; font-family: 'Courier New', monospace; margin: 20px;">
+    <h1 style="font-size: 20px; color: black; margin-bottom: 5px;">CARNET DE VOYAGE — BILLET SNCF</h1>
+    <div id="trip-type-banner" style="font-size: 16px; margin-bottom: 20px; color: #FF7900; font-weight: bold;"></div>
+    <div id="ticket-container" style="display: flex; justify-content: center; flex-wrap: wrap; gap: 20px; margin-bottom: 20px;"></div>
+    <button id="new-ticket-btn" style="background-color: #666; color: white; font-size: 16px; padding: 10px 25px; margin-right: 10px; border: none; cursor: pointer;">NOUVEAU BILLET</button>
+    <button id="validate-code-btn" style="background-color: #FF7900; color: white; font-size: 16px; padding: 10px 25px; border: none; cursor: pointer;">VALIDER</button>
+</div>
+
+<script type="text/javascript">
+    // Inject after load to avoid inline JS blocking
+    setTimeout(function() {
+        const destinations = ["RENNES", "LILLE", "STRASBOURG", "MARSEILLE", "BIARRITZ", "TOULOUSE", "NICE", "BORDEAUX", "LYON", "NANTES"];
+        const classes = ["1", "2"];
+        const days = ["LUNDI", "MARDI", "MERCREDI", "JEUDI", "VENDREDI", "SAMEDI", "DIMANCHE"];
+        const timesOfDay = ["MATIN", "APRÈS-MIDI"];
+
+        // Normalize any input into "16h00" format
+        function normalizeTime(input) {
+            let s = input.trim().toLowerCase().replace(":", "h");
+            const parts = s.split("h");
+            let h = parseInt(parts[0], 10).toString();
+            let m = parts[1] || "00";
+            if (m === "") m = "00";
+            m = m.padStart(2, "0");
+            return `${h}h${m}`;
+        }
+
+        // Generate the same hash as seller side, including days
+        function genererCode(trajet, dayD, dayR, horaires, classe, prix, personnes) {
+            const parts = [
+                trajet,
+                dayD,
+                ...(trajet === "ALLER-RETOUR" ? [dayR] : []),
+                ...horaires.sort(),
+                classe,
+                prix,
+                personnes
+            ];
+            const base = parts.join("|");
+            let hash = 0;
+            for (let i = 0; i < base.length; i++) {
+                hash = (hash * 31 + base.charCodeAt(i)) % 100000000;
+            }
+            return hash.toString(36).toUpperCase();
+        }
+
+        function getNextDateFromDay(targetDay) {
+            const today = new Date();
+            const idxT = days.indexOf(targetDay);
+            const idxC = today.getDay() === 0 ? 6 : today.getDay() - 1;
+            let diff = (idxT - idxC + 7) % 7 || 7;
+            const d = new Date();
+            d.setDate(today.getDate() + diff);
+            return d;
+        }
+
+        function formatDate(d) {
+            return `${d.getDate().toString().padStart(2,"0")}/${(d.getMonth()+1).toString().padStart(2,"0")}/${d.getFullYear()}`;
+        }
+
+        let ticketData = {};
+
+        function clearContainer(container) {
+            while (container.firstChild) container.removeChild(container.firstChild);
+        }
+
+        function genererBillet() {
+            const type = Math.random() < 0.5 ? "ALLER SIMPLE" : "ALLER-RETOUR";
+            const arrival = destinations[Math.floor(Math.random() * destinations.length)];
+            const classe = classes[Math.floor(Math.random() * classes.length)];
+            const personnes = Math.floor(Math.random() * 4) + 1;
+            const dayD = days[Math.floor(Math.random() * days.length)];
+            const moment = timesOfDay[Math.floor(Math.random() * timesOfDay.length)];
+            const dateD = getNextDateFromDay(dayD);
+            const dayR = type === "ALLER-RETOUR" ? days[(days.indexOf(dayD) + 1) % 7] : "";
+            const dateR = new Date(dateD);
+            if (type === "ALLER-RETOUR") dateR.setDate(dateR.getDate() + 1);
+
+            ticketData = {
+                type,
+                arrival,
+                classe,
+                personnes,
+                dayDepart: dayD,
+                dayRetour: dayR,
+                moment,
+                dateDepart: dateD,
+                billets: []
+            };
+
+            document.getElementById("trip-type-banner").textContent =
+                `${type} — ${dayD} ${moment} — ${personnes} personne${personnes>1?"s":""}`;
+
+            const container = document.getElementById("ticket-container");
+            clearContainer(container);
+
+            container.appendChild(creerBillet("GARE MONTPARNASSE - PARIS", arrival, dayD, moment, dateD, true));
+            if (type === "ALLER-RETOUR") {
+                container.appendChild(creerBillet(arrival, "GARE MONTPARNASSE - PARIS", dayR, moment, dateR, false));
+            }
+        }
+
+        function creerBillet(dep, arr, day, moment, dateObj, withPrix) {
+            const div = document.createElement("div");
+            div.className = "billet";
+            div.style.cssText = `
+      width:520px; padding:20px;
+      background:repeating-linear-gradient(45deg,#fff,#fff 5px,#f9f4ee 5px,#f9f4ee 10px);
+      border:2px solid #333; font-family:'Courier New',monospace;
+      box-shadow:3px 3px 12px rgba(0,0,0,0.3);
+      text-transform:uppercase; margin-bottom:20px;
+    `;
+
+            // En-tête
+            const h = document.createElement("div");
+            h.style.cssText = "text-align:center;font-weight:bold;border-bottom:1px solid #000;padding-bottom:5px;margin-bottom:10px;";
+            h.textContent = "BILLET À COMPOSTER AVANT ACCÈS AU TRAIN";
+            div.appendChild(h);
+
+            // Dates + passagers
+            const u = document.createElement("div");
+            u.style.cssText = "display:flex;justify-content:space-between;margin-bottom:10px;";
+            const from = new Date(dateObj);
+            from.setDate(from.getDate() - 2);
+            [
+                ["UTILISABLE DU :", formatDate(from)],
+                ["AU :", formatDate(dateObj)],
+                [`${ticketData.personnes} ADULTE${ticketData.personnes>1?"S":""}`, ""]
+            ]
+            .forEach(([lab, val]) => {
+                const cell = document.createElement("div");
+                const s = document.createElement("strong");
+                s.textContent = lab;
+                cell.appendChild(s);
+                if (val) cell.appendChild(document.createTextNode(" " + val));
+                u.appendChild(cell);
+            });
+            div.appendChild(u);
+
+            // Départ / Arrivée / Classe
+            const info = document.createElement("div");
+            info.style.cssText = "display:flex;justify-content:space-between;border:1px solid #333;padding:10px;margin-bottom:10px;";
+            [
+                ["DÉPART", dep],
+                ["ARRIVÉE", arr],
+                ["CLASSE", ticketData.classe]
+            ]
+            .forEach(([lab, val]) => {
+                const blk = document.createElement("div");
+                const s = document.createElement("strong");
+                s.textContent = lab;
+                blk.appendChild(s);
+                blk.appendChild(document.createElement("br"));
+                blk.appendChild(document.createTextNode(val));
+                info.appendChild(blk);
+            });
+            div.appendChild(info);
+
+            // Jour / Moment
+            const jm = document.createElement("div");
+            jm.style.marginBottom = "6px";
+            jm.innerHTML = `<strong>JOUR :</strong> ${day} - ${moment}`;
+            div.appendChild(jm);
+
+            // Horaires
+            const hdiv = document.createElement("div");
+            hdiv.style.marginBottom = "6px";
+            hdiv.innerHTML = `<strong>HORAIRES :</strong> <input class="horaire" type="text" placeholder="8h30, 10h15" style="width:250px;font-family:'Courier New',monospace;">`;
+            div.appendChild(hdiv);
+
+            // Prix
+            if (withPrix) {
+                const pdiv = document.createElement("div");
+                pdiv.style.marginBottom = "6px";
+                pdiv.innerHTML = `<strong>PRIX :</strong> <input class="prix" type="number" min="0" style="width:100px;font-family:'Courier New',monospace;"> €`;
+                div.appendChild(pdiv);
+            }
+
+            // Code
+            const c = document.createElement("div");
+            c.className = "code-verif";
+            c.style.cssText = "text-align:right;margin-top:10px;font-weight:bold;color:orange;";
+            c.textContent = "--------";
+            div.appendChild(c);
+
+            ticketData.billets.push(div);
+            return div;
+        }
+
+        function validerCode() {
+            const {
+                type,
+                dayDepart,
+                dayRetour,
+                billets,
+                classe,
+                personnes
+            } = ticketData;
+            const horaires = [];
+            billets.forEach(b => {
+                b.querySelector(".horaire").value
+                    .split(",")
+                    .map(normalizeTime)
+                    .filter(h => h)
+                    .forEach(h => horaires.push(h));
+            });
+            const prix = billets[0].querySelector(".prix").value.trim();
+            if (!prix || !horaires.length) {
+                return alert("Merci de remplir les horaires et le prix du billet aller.");
+            }
+
+            const code = genererCode(type, dayDepart, dayRetour, horaires, classe, prix, personnes);
+            billets.forEach(b => b.querySelector(".code-verif").textContent = code);
+        }
+
+        document.getElementById("new-ticket-btn").addEventListener("click", genererBillet);
+        document.getElementById("validate-code-btn").addEventListener("click", validerCode);
+
+        genererBillet();
+    }, 100);
+</script>
